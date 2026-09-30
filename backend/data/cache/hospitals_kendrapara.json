@@ -1,0 +1,96 @@
+[
+  {
+    "osm_id": 7079057913,
+    "lat": 20.4961016,
+    "lon": 86.6202067,
+    "name": "Sri Krishna Health Care and Reproductive Research Centre",
+    "tags": {
+      "addr:district": "Puri",
+      "addr:full": "Madhuban Lane, Matiapara",
+      "addr:postcode": "752002",
+      "addr:state": "Odisha",
+      "amenity": "hospital",
+      "name": "Sri Krishna Health Care and Reproductive Research Centre",
+      "source": "OpenGovernmentData"
+    },
+    "type": "node",
+    "osm_source": "REAL",
+    "facility_type": "hospital"
+  },
+  {
+    "osm_id": 7208491034,
+    "lat": 20.5118115,
+    "lon": 86.5202335,
+    "name": "Government Hospital, Ayeba",
+    "tags": {
+      "addr:district": "Kendrapara",
+      "addr:full": "Near Chualia Temple, Ayeba, Ostapur Sector",
+      "addr:postcode": "754212",
+      "addr:state": "Odisha",
+      "addr:subdistrict": "Kendrapara (Urban)",
+      "amenity": "hospital",
+      "description": "Government Hospital",
+      "name": "Government Hospital, Ayeba",
+      "source": "OpenGovernmentData"
+    },
+    "type": "node",
+    "osm_source": "REAL",
+    "facility_type": "hospital"
+  },
+  {
+    "osm_id": 7211839977,
+    "lat": 20.4629944,
+    "lon": 86.4871705,
+    "name": "Government Hospital, Kurtunga",
+    "tags": {
+      "addr:district": "Kendrapara",
+      "addr:full": "Near Indira Gandhi Girls High School ,Kurtunga, Kurtunga, Kurtunga Sector",
+      "addr:postcode": "754212",
+      "addr:state": "Odisha",
+      "addr:subdistrict": "Marsaghai",
+      "amenity": "hospital",
+      "description": "Government Hospital",
+      "name": "Government Hospital, Kurtunga",
+      "source": "OpenGovernmentData"
+    },
+    "type": "node",
+    "osm_source": "REAL",
+    "facility_type": "hospital"
+  },
+  {
+    "osm_id": 7701256114,
+    "lat": 20.5799749,
+    "lon": 86.5544621,
+    "name": "Barsa Nursing Home",
+    "tags": {
+      "addr:district": "Kendrapara",
+      "addr:full": "Beltal, Pattamundai",
+      "addr:postcode": "754215",
+      "addr:state": "Odhisa",
+      "amenity": "clinic",
+      "name": "Barsa Nursing Home",
+      "source": "Local Knowledge"
+    },
+    "type": "node",
+    "osm_source": "REAL",
+    "facility_type": "clinic"
+  },
+  {
+    "osm_id": 7701256118,
+    "lat": 20.5796374,
+    "lon": 86.55949,
+    "name": "Kar Danta Chikitsalaya & Sairam Medicine Store",
+    "tags": {
+      "addr:district": "Kendrapara",
+      "addr:full": "Cuttack - Kendrapada Road, Pattamundai",
+      "addr:postcode": "754215",
+      "addr:state": "Odhisa",
+      "amenity": "hospital",
+      "name": "Kar Danta Chikitsalaya & Sairam Medicine Store",
+      "source": "Local Knowledge"
+    },
+    "type": "node",
+    "osm_source": "REAL",
+    "facility_type": "hospital"
+  }
+]
