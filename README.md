@@ -31,6 +31,25 @@ PreImpact answers these questions deterministically through in-memory graph rout
 
 ---
 
+## Product Preview
+
+### Real-world decision view
+![PreImpact overview](docs/images/overview.png)
+
+PreImpact combines the cyclone scenario, real OSM infrastructure, and the selected critical asset in one decision view.
+
+### Counterfactual result
+![Counterfactual simulation result](docs/images/counterfactual-result.png)
+
+A hypothetical bridge unavailability scenario is simulated and the resulting emergency-access disruption is quantified.
+
+### Data provenance and methodology
+![PreImpact methodology](docs/images/methodology.png)
+
+The interface distinguishes real, modeled, and estimated information and makes the evidence boundary visible.
+
+---
+
 ## 2. Proof of Concept Results
 
 PreImpact was validated on **Kendrapara District, Odisha**, an extremely flood-prone coastal region bordering the Bay of Bengal, using a historical replay analogue of **Cyclone Fani (May 2019)**:
@@ -215,7 +234,8 @@ Pragmatic engineering next steps for PreImpact:
 ## 11. Links & Resources
 
 - **GitHub Repository:** [https://github.com/PhantomCipher13/preimpact](https://github.com/PhantomCipher13/preimpact)
-- **Demo Video:** [`preimpact_demo.mp4`](./preimpact_demo.mp4) — Synchronized walkthrough demonstrating the live interface, 3-phase simulation lifecycle, and Gemini briefing.
+- **Demo Video (Google Drive):** [Watch Demo Video on Google Drive](https://drive.google.com/file/d/1-xrf2_acIjGR-FG-qxlwYF-0pJ7UF449/view?usp=drivesdk)
+- **Demo Video (Repository):** [`preimpact_demo.mp4`](./preimpact_demo.mp4) — Synchronized walkthrough demonstrating the live interface, 3-phase simulation lifecycle, and Gemini briefing.
 - **Technical Report:** [`TECHNICAL_REPORT.md`](./TECHNICAL_REPORT.md) — Comprehensive technical documentation, mathematical derivations, and architecture details.
 - **API Documentation:** Interactive Swagger UI available at `http://127.0.0.1:8000/docs` when running the backend.
 
