@@ -54,3 +54,12 @@ yarn-error.log*
 # Preserve Essential Data Assets in backend/data/cache
 !backend/data/cache/
 !backend/data/cache/**
+
+# Media Generation Scratch & Video Artifacts
+demo_frames/
+demo_frames_hd/
+visual_validation/
+preimpact_audio.mp4
+preimpact_audio.wav
+*.wav
+

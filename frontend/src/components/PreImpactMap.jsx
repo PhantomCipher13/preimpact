@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 
 let L = null
 
-export default function PreImpactMap({ demoData, selectedResult, onSelectResult, simulationStep }) {
+export default function PreImpactMap({ demoData, selectedResult, onSelectResult, simulationPhase, simulationStep }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const layersRef = useRef([])
@@ -171,32 +171,49 @@ export default function PreImpactMap({ demoData, selectedResult, onSelectResult,
       activeChangeLabel = `${demoData.headline.origin_label} → ${demoData.headline.dest_label}`
     }
 
-    // Draw baseline route
-    const showBaseline = true
-    const isSevered = simulationStep === 'severed'
-    const isBaselinePhase = simulationStep === 'baseline'
+    // Determine simulation state: 'initial' | 'baseline' | 'severed' | 'rerouted' | 'completed'
+    const currentPhase = simulationPhase || simulationStep || 'initial'
+    const isBaselineOpen = currentPhase === 'initial' || currentPhase === 'baseline'
+    const isSevered = currentPhase === 'severed'
+    const isRerouted = currentPhase === 'rerouted'
+    const isCompleted = currentPhase === 'completed'
 
-    if (activeBaseline && activeBaseline.length >= 2 && showBaseline) {
+    // Route 1: Baseline corridor
+    // - In 'initial' or 'baseline': Vibrant solid blue corridor (normal open access)
+    // - In 'severed': Red dashed interrupted line (access cut)
+    // - In 'completed': Subtle underlying blue route to show the original baseline comparison
+    if (activeBaseline && activeBaseline.length >= 2) {
       const coords = activeBaseline
         .filter(n => nodePos[n])
         .map(n => [nodePos[n].lat, nodePos[n].lon])
       if (coords.length >= 2) {
-        addLayer(L.polyline(coords, {
-          color: isSevered ? '#dc2626' : '#1d4ed8',
-          weight: isBaselinePhase ? 7 : 6,
-          opacity: isSevered ? 0.6 : 0.9,
-          dashArray: isSevered ? '6 6' : undefined,
-        }).bindTooltip(
-          isSevered
-            ? `⛔ DIRECT ROUTE SEVERED: ${activeChangeLabel}`
-            : `Normal Access: ${activeChangeLabel} (Bridge Available)`,
-          { sticky: true }
-        ))
+        if (isSevered) {
+          addLayer(L.polyline(coords, {
+            color: '#dc2626',
+            weight: 6,
+            opacity: 0.85,
+            dashArray: '8 6',
+          }).bindTooltip(`⛔ DIRECT ROUTE SEVERED: ${activeChangeLabel} (Bridge Unavailable)`, { sticky: true }))
+        } else if (isBaselineOpen) {
+          addLayer(L.polyline(coords, {
+            color: '#1d4ed8',
+            weight: 6,
+            opacity: 0.95,
+          }).bindTooltip(`Normal Baseline Access: ${activeChangeLabel} (Bridge Available)`, { sticky: true }))
+        } else if (isCompleted) {
+          addLayer(L.polyline(coords, {
+            color: '#3b82f6',
+            weight: 4,
+            opacity: 0.45,
+          }).bindTooltip(`Original Baseline Route: ${activeChangeLabel} (Bridge Open)`, { sticky: true }))
+        }
       }
     }
 
-    // Draw scenario alternate route (orange dashed) — only in rerouted phase or standard view
-    const showAlternate = simulationStep !== 'baseline' && simulationStep !== 'severed'
+    // Route 2: Alternate detour corridor
+    // - In 'initial', 'baseline', 'severed': Hidden (do NOT show detour before reroute completes)
+    // - In 'rerouted' or 'completed': Prominent bold orange dashed detour (#ea580c)
+    const showAlternate = isRerouted || isCompleted
 
     if (showAlternate && activeScenario && activeScenario.length >= 2) {
       const coords = activeScenario
@@ -205,7 +222,7 @@ export default function PreImpactMap({ demoData, selectedResult, onSelectResult,
       if (coords.length >= 2) {
         addLayer(L.polyline(coords, {
           color: '#ea580c',
-          weight: simulationStep === 'rerouted' ? 7 : 6,
+          weight: isRerouted ? 7 : 6,
           opacity: 0.95,
           dashArray: '12 6',
         }).bindTooltip(`Counterfactual Detour: ${activeChangeLabel} (Bridge Unavailable)`, { sticky: true }))
@@ -224,9 +241,13 @@ export default function PreImpactMap({ demoData, selectedResult, onSelectResult,
       const expLabel = exp.exposure_label ?? 'Exposed'
 
       if (isSelected) {
-        // Selected bridge marker (pulsing red removal symbol or severed badge)
-        const iconHtml = isBaselinePhase
-          ? `<div class="bridge-marker pulse-open" title="Bridge Open">🌉</div>`
+        // Selected bridge marker
+        // Before simulation ('initial' or 'baseline'): Bridge is AVAILABLE / OPEN (marker: 🌉, pulse-open)
+        // During 'severed': Red flashing severed marker ✖ (sever-flash)
+        // During 'rerouted' or 'completed': Red unavailable marker ✖ (pulse-selected)
+        const isBridgeAvailable = isBaselineOpen
+        const iconHtml = isBridgeAvailable
+          ? `<div class="bridge-marker pulse-open" title="Bridge Available (Baseline Open)">🌉</div>`
           : `<div class="bridge-marker pulse-selected ${isSevered ? 'sever-flash' : ''}" title="Selected Counterfactual Asset">✖</div>`
 
         const selectedIcon = L.divIcon({
@@ -238,14 +259,18 @@ export default function PreImpactMap({ demoData, selectedResult, onSelectResult,
         const marker = L.marker([b.midpoint_lat, b.midpoint_lon], { icon: selectedIcon, zIndexOffset: 1000 })
         marker.bindPopup(`
           <div class="map-popup">
-            <span class="popup-tag-danger">${isBaselinePhase ? '✓ BASELINE ACCESS' : '⚠ SELECTED COUNTERFACTUAL ASSET'}</span>
+            <span class="${isBridgeAvailable ? 'popup-tag-safe' : 'popup-tag-danger'}">
+              ${isBridgeAvailable ? '✓ BASELINE ACCESS — BRIDGE AVAILABLE' : '⚠ SELECTED COUNTERFACTUAL ASSET'}
+            </span>
             <div style="font-size:13px;font-weight:700;margin:4px 0;">${b.asset_id}: ${b.name}</div>
             <b>Highway:</b> ${b.highway_type} (${Math.round(b.length_m || 0)}m)<br>
             <b>Hazard Exposure:</b> ${expScore.toFixed(3)} (${expLabel})<br>
             <b>Dist. to Track:</b> ${exp.distance_from_track_km ?? '?'} km<br>
             <b>Surge Zone:</b> ${exp.in_surge_zone ? 'YES' : 'NO'}<br>
-            <div style="margin-top:6px;font-size:10px;color:#fca5a5;">
-              Simulating impact if this bridge becomes impassable.
+            <div style="margin-top:6px;font-size:10px;color:${isBridgeAvailable ? '#15803d' : '#fca5a5'};">
+              ${isBridgeAvailable
+                ? 'Bridge is accessible under normal baseline transit.'
+                : 'Simulating hypothetical unavailability during cyclone.'}
             </div>
           </div>
         `)
@@ -387,7 +412,7 @@ export default function PreImpactMap({ demoData, selectedResult, onSelectResult,
       mapInstanceRef.current._legendAdded = true
     }
 
-  }, [demoData, selectedResult, simulationStep])
+  }, [demoData, selectedResult, simulationPhase, simulationStep])
 
   return (
     <div className="map-container">

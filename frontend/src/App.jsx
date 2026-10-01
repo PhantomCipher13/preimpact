@@ -14,65 +14,119 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 function App() {
   const [demoData, setDemoData]     = useState(null)
   const [realData, setRealData]     = useState(null)
-  const [activeMode, setActiveMode] = useState('demo')   // 'demo' | 'real'
+  const [activeMode, setActiveMode] = useState('real')   // 'real' | 'demo'
   const [loading, setLoading]       = useState(true)
   const [realLoading, setRealLoading] = useState(false)
   const [error, setError]           = useState(null)
   const [selectedResult, setSelectedResult] = useState(null)
-  const [showDataQuality, setShowDataQuality] = useState(false)
-  const [activeTab, setActiveTab]   = useState('map')    // 'map' | 'ranking'
-  const [simulationStep, setSimulationStep] = useState(null) // null | 'baseline' | 'severed' | 'rerouted'
+  const [activeTab, setActiveTab]   = useState('map')    // 'map' | 'ranking' | 'data'
+  const [simulationPhase, setSimulationPhase] = useState('initial') // 'initial' | 'baseline' | 'severed' | 'rerouted' | 'completed'
   const [activeOverlay, setActiveOverlay]   = useState(null) // null | 'scenario' | 'network'
 
   function runCounterfactualSimulation() {
     setActiveTab('map')
-    const topResult = activeData?.counterfactual_results?.[0]
+    const topResult = (selectedResult?.changes?.length > 0)
+      ? selectedResult
+      : (activeData?.counterfactual_results?.find(r => r.asset_id === 'B006') || activeData?.counterfactual_results?.[0])
     if (!topResult) return
 
     setSelectedResult(topResult)
-    setSimulationStep('baseline')
+    setSimulationPhase('baseline')
 
     setTimeout(() => {
-      setSimulationStep('severed')
+      setSimulationPhase('severed')
     }, 1400)
 
     setTimeout(() => {
-      setSimulationStep('rerouted')
+      setSimulationPhase('rerouted')
     }, 2800)
 
     setTimeout(() => {
-      setSimulationStep(null)
+      setSimulationPhase('completed')
     }, 7000)
   }
 
   useEffect(() => {
-    fetchDemoData()
+    loadInitialData()
   }, [])
 
-  async function fetchDemoData() {
+  async function loadInitialData() {
     setLoading(true)
     setError(null)
+    try {
+      setRealLoading(true)
+      const res = await fetch(`${API_BASE}/api/real`)
+      if (!res.ok) throw new Error(`Real API status: ${res.status}`)
+      const data = await res.json()
+      setRealData(data)
+      setActiveMode('real')
+      if (data.counterfactual_results?.length > 0) {
+        const b006 = data.counterfactual_results.find(r => r.asset_id === 'B006')
+        setSelectedResult(b006 || data.counterfactual_results[0])
+      }
+      setSimulationPhase('initial')
+    } catch (err) {
+      console.warn('Real OSM data unavailable on startup, falling back to demo mode:', err)
+      await fetchDemoData(true)
+    } finally {
+      setRealLoading(false)
+      setLoading(false)
+    }
+  }
+
+  async function fetchDemoData(isFallback = false) {
+    setLoading(true)
+    if (!isFallback) setError(null)
     try {
       const res = await fetch(`${API_BASE}/api/demo`)
       if (!res.ok) throw new Error(`API error: ${res.status}`)
       const data = await res.json()
       setDemoData(data)
+      setActiveMode('demo')
       if (data.counterfactual_results?.length > 0) {
         setSelectedResult(data.counterfactual_results[0])
       }
+      if (isFallback) {
+        setError('Real OSM endpoint unavailable — running in DEMO_FALLBACK mode')
+      }
+      setSimulationPhase('initial')
     } catch (err) {
       console.error('API fetch failed, using embedded fallback:', err)
       const fallback = buildFallbackData()
       setDemoData(fallback)
+      setActiveMode('demo')
       setSelectedResult(fallback.counterfactual_results[0])
-      setError('API unreachable — showing embedded demo data')
+      setError('Backend unreachable — displaying embedded DEMO_FALLBACK data')
+      setSimulationPhase('initial')
     } finally {
       setLoading(false)
     }
   }
 
+  async function switchToRealMode() {
+    if (realData?.counterfactual_results?.length > 0) {
+      setActiveMode('real')
+      const b006 = realData.counterfactual_results.find(r => r.asset_id === 'B006')
+      setSelectedResult(b006 || realData.counterfactual_results[0])
+      setSimulationPhase('initial')
+    } else {
+      await fetchRealData()
+    }
+  }
+
+  function switchToDemoMode() {
+    setActiveMode('demo')
+    if (demoData?.counterfactual_results?.length > 0) {
+      setSelectedResult(demoData.counterfactual_results[0])
+    } else {
+      fetchDemoData()
+    }
+    setSimulationPhase('initial')
+  }
+
   async function fetchRealData() {
     setRealLoading(true)
+    setError(null)
     try {
       const res = await fetch(`${API_BASE}/api/real`)
       if (!res.ok) throw new Error(`Real API error: ${res.status}`)
@@ -80,8 +134,10 @@ function App() {
       setRealData(data)
       setActiveMode('real')
       if (data.counterfactual_results?.length > 0) {
-        setSelectedResult(data.counterfactual_results[0])
+        const b006 = data.counterfactual_results.find(r => r.asset_id === 'B006')
+        setSelectedResult(b006 || data.counterfactual_results[0])
       }
+      setSimulationPhase('initial')
     } catch (err) {
       setError(`Real data unavailable: ${err.message}. Using demo mode.`)
     } finally {
@@ -192,16 +248,16 @@ function App() {
         <div className="toolbar-left">
           <button
             className={`mode-btn ${activeMode === 'demo' ? 'active' : ''}`}
-            onClick={() => { setActiveMode('demo'); setSelectedResult(demoData?.counterfactual_results?.[0]) }}
+            onClick={switchToDemoMode}
           >
             DEMO MODE
           </button>
           <button
             className={`mode-btn ${activeMode === 'real' ? 'active' : ''}`}
-            onClick={fetchRealData}
+            onClick={switchToRealMode}
             disabled={realLoading}
           >
-            {realLoading ? 'LOADING…' : realData ? 'REAL DATA' : 'LOAD REAL DATA'}
+            {realLoading ? 'LOADING…' : 'REAL DATA'}
           </button>
           <div className="data-mode-badge">
             {activeData?.mode === 'REAL_OSM'
@@ -216,28 +272,32 @@ function App() {
         </div>
         <div className="toolbar-center">
           <button
-            className={`demo-sim-btn ${simulationStep ? 'simulating' : ''}`}
+            className={`demo-sim-btn ${['baseline', 'severed', 'rerouted'].includes(simulationPhase) ? 'simulating' : ''}`}
             onClick={runCounterfactualSimulation}
-            disabled={simulationStep !== null}
+            disabled={['baseline', 'severed', 'rerouted'].includes(simulationPhase)}
             title="Automated walkthrough: baseline route → bridge unavailable → counterfactual reroute → AI brief"
           >
-            {simulationStep ? 'SIMULATING COUNTERFACTUAL…' : '▶ RUN COUNTERFACTUAL SIMULATION'}
+            {['baseline', 'severed', 'rerouted'].includes(simulationPhase) ? 'SIMULATING COUNTERFACTUAL…' : '▶ RUN COUNTERFACTUAL SIMULATION'}
           </button>
         </div>
         <div className="toolbar-right">
           <button
             className={`tab-btn ${activeTab === 'map' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('map'); setShowDataQuality(false); }}
-          >MAP</button>
+            onClick={() => setActiveTab('map')}
+          >
+            MAP
+          </button>
           <button
             className={`tab-btn ${activeTab === 'ranking' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('ranking'); setShowDataQuality(false); }}
-          >CRITICAL ASSET PRIORITIES</button>
-          <button
-            className={`tab-btn ${showDataQuality || activeTab === 'data' ? 'active' : ''}`}
-            onClick={() => { setShowDataQuality(v => !v); setActiveTab(showDataQuality ? 'map' : 'data'); }}
+            onClick={() => setActiveTab('ranking')}
           >
-            {showDataQuality ? 'HIDE DATA' : 'DATA & METHODOLOGY'}
+            CRITICAL ASSET PRIORITIES
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'data' ? 'active' : ''}`}
+            onClick={() => setActiveTab(activeTab === 'data' ? 'map' : 'data')}
+          >
+            DATA & METHODOLOGY
           </button>
         </div>
       </div>
@@ -347,19 +407,19 @@ function App() {
           )}
 
           {/* Simulation HUD */}
-          {simulationStep && (
-            <div className={`simulation-hud hud-${simulationStep}`}>
+          {['baseline', 'severed', 'rerouted'].includes(simulationPhase) && (
+            <div className={`simulation-hud hud-${simulationPhase}`}>
               <div className="hud-phase-badge">
-                {simulationStep === 'baseline' && 'PHASE 1: BASELINE ACCESS'}
-                {simulationStep === 'severed' && 'PHASE 2: CYCLONE HAZARD — BRIDGE UNAVAILABLE'}
-                {simulationStep === 'rerouted' && 'PHASE 3: COUNTERFACTUAL REROUTE COMPLETE'}
+                {simulationPhase === 'baseline' && 'PHASE 1: BASELINE ACCESS'}
+                {simulationPhase === 'severed' && 'PHASE 2: CYCLONE HAZARD — BRIDGE UNAVAILABLE'}
+                {simulationPhase === 'rerouted' && 'PHASE 3: COUNTERFACTUAL REROUTE COMPLETE'}
               </div>
               <div className="hud-message">
-                {simulationStep === 'baseline' &&
+                {simulationPhase === 'baseline' &&
                   `Normal emergency access route active via Bridge ${result?.asset_id} (${result?.asset_name})`}
-                {simulationStep === 'severed' &&
+                {simulationPhase === 'severed' &&
                   `Simulating hypothetical unavailability of Bridge ${result?.asset_id} — route severed ✖`}
-                {simulationStep === 'rerouted' &&
+                {simulationPhase === 'rerouted' &&
                   `Alternate route active: +${result?.max_disruption_delta_min ?? 9.5} min emergency delay · AI Briefing generated ✨`}
               </div>
             </div>
@@ -369,8 +429,9 @@ function App() {
           <PreImpactMap
             demoData={activeData}
             selectedResult={result}
-            onSelectResult={(r) => setSelectedResult(r)}
-            simulationStep={simulationStep}
+            onSelectResult={(r) => { setSelectedResult(r); setSimulationPhase('initial'); }}
+            simulationPhase={simulationPhase}
+            simulationStep={simulationPhase}
           />
 
           {/* Full Asset Ranking Overlay Modal */}
@@ -389,20 +450,20 @@ function App() {
                 <AssetRanking
                   results={activeData?.counterfactual_results || []}
                   selectedId={result?.asset_id}
-                  onSelect={(r) => { setSelectedResult(r); setActiveTab('map'); }}
+                  onSelect={(r) => { setSelectedResult(r); setSimulationPhase('initial'); setActiveTab('map'); }}
                 />
               </div>
             </div>
           )}
 
           {/* Methodology & Data Quality Drawer */}
-          {(showDataQuality || activeTab === 'data') && (
+          {activeTab === 'data' && (
             <div className="map-overlay-modal">
               <div className="mom-header">
                 <span className="mom-title">DATA PROVENANCE & METHODOLOGY</span>
                 <button
                   className="mom-close-btn"
-                  onClick={() => { setShowDataQuality(false); setActiveTab('map'); }}
+                  onClick={() => setActiveTab('map')}
                 >
                   ← Return to Map
                 </button>
